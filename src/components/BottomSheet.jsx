@@ -1,28 +1,25 @@
-// src/components/BottomSheet.jsx
 import React, { useRef, useEffect, useState } from "react";
 import "./BottomSheet.css";
 
 const snapPoints = {
-  CLOSED: 0.1,     // 10% from bottom
-  HALF: 0.5,       // 50%
-  FULL: 0.9        // 90%
+  CLOSED: 0.1,     
+  HALF: 0.5,       
+  FULL: 0.9     
 };
 
 export default function BottomSheet() {
   const sheetRef = useRef(null);
-  const [position, setPosition] = useState(snapPoints.CLOSED); // 0.1
+  const [position, setPosition] = useState(snapPoints.CLOSED); 
 
   const [dragging, setDragging] = useState(false);
   const startYRef = useRef(0);
   const startPositionRef = useRef(position);
 
-  // Convert position (0 to 1) to pixels
   const getTranslateY = () => {
     const vh = window.innerHeight;
     return vh * (1 - position);
   };
 
-  // Snap to nearest point with spring motion
   const snapTo = (target) => {
     let current = position;
     let velocity = 0;
