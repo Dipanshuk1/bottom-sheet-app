@@ -1,93 +1,79 @@
-import React, { useRef, useEffect, useState } from "react";
-import "./BottomSheet.css";
+// components/BottomSheet.jsx
+import React, { useRef, useEffect } from 'react';
+import Handle from './Handle';
 
-const snapPoints = {
-  CLOSED: 0.1,     
-  HALF: 0.5,       
-  FULL: 0.9     
-};
-
-export default function BottomSheet() {
+export default function BottomSheet({ position, setPosition }) {
   const sheetRef = useRef(null);
-  const [position, setPosition] = useState(snapPoints.CLOSED); 
+  const dragStart = useRef(null);
 
-  const [dragging, setDragging] = useState(false);
-  const startYRef = useRef(0);
-  const startPositionRef = useRef(position);
-
-  const getTranslateY = () => {
-    const vh = window.innerHeight;
-    return vh * (1 - position);
+  const positions = {
+    closed: 'translate-y-full',
+    half: 'translate-y-1/2',
+    open: 'translate-y-0'
   };
 
-  const snapTo = (target) => {
-    let current = position;
-    let velocity = 0;
-    const stiffness = 0.2;
-    const damping = 0.7;
+  useEffect(() => {
+    const sheet = sheetRef.current;
+    if (sheet) {
+      sheet.style.transition = 'transform 0.4s cubic-bezier(0.22, 1, 0.36, 1)';
+      if (position === 'closed') sheet.style.transform = 'translateY(100%)';
+      else if (position === 'half') sheet.style.transform = 'translateY(50%)';
+      else if (position === 'open') sheet.style.transform = 'translateY(0%)';
+    }
+  }, [position]);
 
-    const animate = () => {
-      const force = (target - current) * stiffness;
-      velocity = (velocity + force) * damping;
-      current += velocity;
-
-      if (Math.abs(target - current) < 0.001 && Math.abs(velocity) < 0.001) {
-        setPosition(target);
-        return;
-      }
-
-      setPosition(current);
-      requestAnimationFrame(animate);
-    };
-
-    animate();
+  const handleDragStart = (e) => {
+    dragStart.current = e.touches ? e.touches[0].clientY : e.clientY;
   };
 
-  const handleTouchStart = (e) => {
-    setDragging(true);
-    startYRef.current = e.touches[0].clientY;
-    startPositionRef.current = position;
+  const handleDragMove = (e) => {
+    if (!dragStart.current) return;
+    const currentY = e.touches ? e.touches[0].clientY : e.clientY;
+    const deltaY = currentY - dragStart.current;
+
+    const sheet = sheetRef.current;
+    if (sheet) {
+      sheet.style.transition = 'none';
+      const newTranslate = Math.min(Math.max(deltaY, -window.innerHeight * 0.5), window.innerHeight * 0.5);
+      sheet.style.transform = `translateY(${newTranslate + getTranslateFromPosition()}px)`;
+    }
   };
 
-  const handleTouchMove = (e) => {
-    if (!dragging) return;
-    const deltaY = e.touches[0].clientY - startYRef.current;
-    const vh = window.innerHeight;
-    const deltaPercent = deltaY / vh;
-    let newPosition = startPositionRef.current - deltaPercent;
+  const handleDragEnd = (e) => {
+    const endY = e.changedTouches ? e.changedTouches[0].clientY : e.clientY;
+    const delta = endY - dragStart.current;
 
-    newPosition = Math.max(0.1, Math.min(0.9, newPosition));
-    setPosition(newPosition);
+    if (delta > 100) setPosition('closed');
+    else if (delta > 30) setPosition('half');
+    else setPosition('open');
+
+    dragStart.current = null;
   };
 
-  const handleTouchEnd = () => {
-    setDragging(false);
-    const closest = [snapPoints.CLOSED, snapPoints.HALF, snapPoints.FULL]
-      .reduce((prev, curr) => Math.abs(curr - position) < Math.abs(prev - position) ? curr : prev);
-    snapTo(closest);
+  const getTranslateFromPosition = () => {
+    if (position === 'closed') return window.innerHeight;
+    if (position === 'half') return window.innerHeight / 2;
+    return 0;
   };
 
   return (
-    <>
-      <div
-        ref={sheetRef}
-        className="bottom-sheet"
-        style={{ transform: `translateY(${getTranslateY()}px)` }}
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
-      >
-        <div className="handle-bar"></div>
-        <div className="sheet-content">
-          <h2>Bottom Sheet</h2>
-          <p>This is a custom bottom sheet component with drag and snap.</p>
-          <div className="controls">
-            <button onClick={() => snapTo(snapPoints.CLOSED)}>Close</button>
-            <button onClick={() => snapTo(snapPoints.HALF)}>Half</button>
-            <button onClick={() => snapTo(snapPoints.FULL)}>Open</button>
-          </div>
-        </div>
+    <div
+      ref={sheetRef}
+      className="fixed left-0 right-0 bottom-0 h-[80vh] bg-white rounded-t-2xl shadow-lg"
+      onMouseDown={handleDragStart}
+      onMouseMove={handleDragMove}
+      onMouseUp={handleDragEnd}
+      onTouchStart={handleDragStart}
+      onTouchMove={handleDragMove}
+      onTouchEnd={handleDragEnd}
+    >
+      <Handle />
+      <div className="p-4 overflow-auto h-full">
+        <h2 className="text-lg font-semibold mb-2">Bottom Sheet Content</h2>
+        <p className="text-gray-700">
+          This is a sample bottom sheet. You can drag it or use the buttons above to change positions.
+        </p>
       </div>
-    </>
+    </div>
   );
 }
